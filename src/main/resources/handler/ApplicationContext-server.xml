@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans 
+    xmlns="http://www.springframework.org/schema/beans"  
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
+    xmlns:p="http://www.springframework.org/schema/p"  
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+	
+	<bean id="systemMessageDecoder" class="com.pci.data.could.card.system.handler.netty.SystemMessageDecoder"/>
+	
+	<bean id="systemServiceHandler" class="com.pci.data.could.card.system.handler.netty.SystemServiceHandler">
+		<!-- <property name="dataPackHandler" ref="dataPackHandler"/>-->
+		<property name="dispatcherService" ref="dispatcherService"/> 
+	</bean>
+	
+	<bean id="systemChannelPipelineFactory" class="com.pci.data.could.card.system.handler.netty.SystemChannelPipelineFactory">
+		<constructor-arg name="decoder" ref="systemMessageDecoder"/>
+		<constructor-arg name="executor">
+			<bean class="org.jboss.netty.handler.execution.ExecutionHandler">
+				<constructor-arg index="0">
+					<bean class="org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor">
+						<constructor-arg name="corePoolSize" value="#{systemPropertiesReader['server.executor.corePoolSize']==null ? 16 : systemPropertiesReader['server.executor.corePoolSize']}"/>
+		  				<constructor-arg name="maxChannelMemorySize" value="#{systemPropertiesReader['server.executor.maxChannelMemorySize']==null ? 1048576 : systemPropertiesReader['server.executor.maxChannelMemorySize']}"/>
+		  				<constructor-arg name="maxTotalMemorySize" value="#{systemPropertiesReader['server.executor.maxTotalMemorySize']==null ? 1048576 : systemPropertiesReader['server.executor.maxTotalMemorySize']}"/>
+		  			</bean>
+				</constructor-arg>
+			</bean>
+		</constructor-arg>
+		<constructor-arg name="handler" ref="systemServiceHandler"/>
+	</bean>
+	
+	<bean id="systemBossExecutor" class="java.util.concurrent.Executors" factory-method="newCachedThreadPool"/>
+	
+	<bean id="systemWorkerExecutor" class="java.util.concurrent.Executors" factory-method="newFixedThreadPool">
+		<constructor-arg index="0" value="#{systemPropertiesReader['server.worker.corePoolSize']==null ? 16 : systemPropertiesReader['server.worker.corePoolSize']}"/>
+	</bean>
+	
+	<bean id="systemServiceServer" class="com.pci.data.could.card.system.handler.netty.SystemServiceServer" init-method="start" destroy-method="stop">
+		<constructor-arg name="port" value="#{systemPropertiesReader['Socket_Port']}"/>
+		<constructor-arg name="workerCorePoolSize" value="#{systemPropertiesReader['server.worker.corePoolSize']==null ? 16 : systemPropertiesReader['server.worker.corePoolSize']}"/>
+		<constructor-arg name="channelPipelineFactory" ref="systemChannelPipelineFactory"/>
+		<constructor-arg name="bossExecutor" ref="systemBossExecutor"/>
+		<constructor-arg name="workerExecutor" ref="systemWorkerExecutor"/>
+  	</bean>
+  	
+</beans>
